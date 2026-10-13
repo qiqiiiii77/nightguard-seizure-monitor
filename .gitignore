@@ -1,0 +1,29 @@
+# ===== 隐私红线：患者数据绝不入库 =====
+# SeizeIT2 / CHB-MIT 的原始与派生数据一律不上传
+cache/
+cache_*/
+*.edf
+*.edf.gz
+*.tsv
+manifest*.json
+**/sub-*/
+**/chb*/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# 大文件 / 运行产物
+*.npy
+*.npz
+*.mat
+results_*.json
+run_*.log

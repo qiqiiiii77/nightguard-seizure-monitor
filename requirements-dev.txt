@@ -1,0 +1,11 @@
+# 引擎本身只需要 numpy
+numpy==2.4.6
+
+# 复现完整评估 / 读 EDF / 画图时才需要
+scipy==1.17.1
+mne==1.13.2
+pandas==3.0.6
+scikit-learn==1.7.2
+matplotlib==3.11.2
+joblib==1.6.0
+tqdm==4.70.1

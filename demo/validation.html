@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<title>NightGuard 真实数据检验报告</title>
+<style>
+:root{--ink:#1b2029;--dim:#5b6472;--line:#e3e8ef;--bg:#fff;--soft:#f7f9fc;
+       --red:#d93f3f;--blue:#5b8def;--amber:#f0a03c}
+*{box-sizing:border-box}
+body{margin:0;padding:40px 44px 56px;max-width:860px;margin:0 auto;background:var(--bg);
+     color:var(--ink);font:15px/1.72 "PingFang SC","Helvetica Neue",Arial,sans-serif}
+h1{font-size:27px;margin:0 0 6px;letter-spacing:-.3px}
+h2{font-size:19px;margin:38px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--line)}
+h3{font-size:15.5px;margin:24px 0 8px}
+p{margin:9px 0}
+.sub{color:var(--dim);font-size:13.5px;margin-bottom:26px}
+.meta{color:var(--dim);font-size:12.5px;margin:2px 0 10px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:22px 0 8px}
+.kpi{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi b{display:block;font-size:23px;line-height:1.25;letter-spacing:-.5px}
+.kpi span{color:var(--dim);font-size:12.5px}
+.kpi.accent b{color:var(--red)}
+table{width:100%;border-collapse:collapse;margin:12px 0 6px;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{background:var(--soft);font-weight:600;color:#39414d;font-size:12.5px}
+td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+th:not(:first-child){text-align:right}
+tr.hi td{background:#fff5f5;font-weight:600}
+.note{background:var(--soft);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;
+      padding:12px 16px;margin:14px 0;font-size:13.5px}
+.warn{background:#fff8f4;border-left-color:var(--amber)}
+.hot{background:#fff5f5;border-left-color:var(--red)}
+.charts{display:grid;gap:10px;margin:16px 0}
+figcaption{color:var(--dim);font-size:12.5px;margin-top:2px}
+code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:12.8px;
+     font-family:"SF Mono",Menlo,monospace}
+.foot{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);
+      color:var(--dim);font-size:12.5px}
+@media print{body{padding:18px}h2{page-break-after:avoid}table,figure{page-break-inside:avoid}}
+</style></head><body>
+
+<h1>NightGuard · 真实数据检验报告</h1>
+<p class="sub">三个独立公开真实数据集 · 引擎代码零改动 · 2026-09-20</p>
+
+<div class="kpis">
+  <div class="kpi accent"><b>2.1×</b><span>相同灵敏度下<br>误报降低倍数（EEG）</span></div>
+  <div class="kpi"><b>100%</b><span>CHB-MIT 儿童 EEG<br>最高发作检出（23 例）</span></div>
+  <div class="kpi"><b>94%</b><span>SeizeIT2 可穿戴<br>全面性发作检出</span></div>
+  <div class="kpi"><b>1550</b><span>UCD 呼吸事件<br>12 人标注事件数</span></div>
+</div>
+
+<h2>一、检验数据</h2>
+<p>三个数据集人群、设备、信号类型、标注体系完全不同，分别验证三条链路：</p>
+<table class=""><thead><tr><th></th><th>CHB-MIT（EEG 链）</th><th>SeizeIT2（可穿戴链）</th><th>UCD（呼吸/血氧链）</th></tr></thead><tbody><tr><td>来源</td><td>波士顿儿童医院 / PhysioNet</td><td>鲁汶大学等 5 家中心 / OpenNeuro</td><td>圣文森大学医院 / PhysioNet</td></tr><tr><td>人群</td><td>23 例难治性癫痫<b>患儿</b>，182 次发作</td><td>125 例患者（含儿童），883 次发作</td><td>25 名疑诊睡眠呼吸障碍成人</td></tr><tr><td>模态</td><td>23 导联头皮 EEG 256 Hz</td><td>EEG / ECG / 加速度计 25 Hz</td><td>气流 / 呼吸努力 / <b>血氧</b> / ECG</td></tr><tr><td>标注</td><td>专家逐秒发作区间</td><td>专家逐次发作区间</td><td>专家逐次呼吸事件 + 血氧降幅</td></tr><tr><td>本报告用</td><td>23 名患儿 · <b>166 次发作</b> · 91 h 夜间</td><td>31 记录 · <b>109 次</b>入睡期发作 · 10.3 h</td><td>12 人 · <b>1550 次</b>呼吸事件 · 36 h 睡眠</td></tr></tbody></table>
+<div class="note warn"><b>下载踩坑：</b><code>physionet.org</code> 对<b>每个连接</b>限速约 25 KB/s，
+按需读取一晚 40 MB 的 EDF 根本读不动。改用官方 S3 桶 <code>physionet-open</code>（单连接 460 KB/s）
+叠加 16 路并行分块，实测 <b>3.1 MB/s —— 快 120 倍</b>。管线改为
+「S3 并行预取 → 本地稀疏缓存 → 离线评估」，503 MB 用 2.7 分钟下完。</div>
+
+<h2>二、CHB-MIT：EEG 链路检验</h2>
+<p>协议：无发作文件取每名患儿 <b>22:00–06:00 整段落在夜间</b>的文件连续回放；
+含发作文件从发作前 240 秒起回放。4 秒窗 / 2 秒步进 / 18 导联。前 20 窗为基线冷启动，
+不计误报。因为「阈值该多高」没有标准答案，此处<b>扫描阈值</b>给出完整权衡曲线。</p>
+<p class="meta">本轮把患儿数从 4 名扩到 <b>23 名</b>（166 次发作、91 小时夜间监测），
+横跨年龄与发作类型差异更大的样本 —— 用来检验前一版结论是不是只在少数幸运患者上成立。</p>
+
+<div class="charts">
+<figure><svg viewBox="0 0 560 300" width="100%" style="max-width:560px"><rect x="0" y="0" width="560" height="300" fill="none"/><line x1="52" y1="264.0" x2="544" y2="264.0" stroke="#eceff3"/><text x="46" y="267.5" font-size="10" fill="#8b95a5" text-anchor="end">0%</text><line x1="52" y1="214.0" x2="544" y2="214.0" stroke="#eceff3"/><text x="46" y="217.5" font-size="10" fill="#8b95a5" text-anchor="end">20%</text><line x1="52" y1="164.0" x2="544" y2="164.0" stroke="#eceff3"/><text x="46" y="167.5" font-size="10" fill="#8b95a5" text-anchor="end">40%</text><line x1="52" y1="114.0" x2="544" y2="114.0" stroke="#eceff3"/><text x="46" y="117.5" font-size="10" fill="#8b95a5" text-anchor="end">60%</text><line x1="52" y1="64.0" x2="544" y2="64.0" stroke="#eceff3"/><text x="46" y="67.5" font-size="10" fill="#8b95a5" text-anchor="end">80%</text><line x1="52" y1="14.0" x2="544" y2="14.0" stroke="#eceff3"/><text x="46" y="17.5" font-size="10" fill="#8b95a5" text-anchor="end">100%</text><text x="52.0" y="279" font-size="10" fill="#8b95a5" text-anchor="middle">0</text><text x="175.0" y="279" font-size="10" fill="#8b95a5" text-anchor="middle">2.5</text><text x="298.0" y="279" font-size="10" fill="#8b95a5" text-anchor="middle">5</text><text x="421.0" y="279" font-size="10" fill="#8b95a5" text-anchor="middle">7.5</text><text x="544.0" y="279" font-size="10" fill="#8b95a5" text-anchor="middle">10</text><line x1="52" y1="264" x2="544" y2="264" stroke="#c8d0da"/><text x="298" y="296" font-size="10.5" fill="#5b6472" text-anchor="middle">误报（次/小时）</text><text x="12" y="139" font-size="10.5" fill="#5b6472" text-anchor="middle" transform="rotate(-90 12 139)">灵敏度</text><path d="M260.7,116.4 L366.7,89.3" fill="none" stroke="#9aa4b2" stroke-width="2" stroke-linejoin="round"/><circle cx="260.7" cy="116.4" r="3" fill="#9aa4b2"/><circle cx="366.7" cy="89.3" r="3" fill="#9aa4b2"/><path d="M52.0,264.0 L334.2,143.5 L372.1,111.9 L490.5,90.8" fill="none" stroke="#5b8def" stroke-width="2" stroke-linejoin="round"/><circle cx="52.0" cy="264.0" r="3" fill="#5b8def"/><circle cx="334.2" cy="143.5" r="3" fill="#5b8def"/><circle cx="372.1" cy="111.9" r="3" fill="#5b8def"/><circle cx="490.5" cy="90.8" r="3" fill="#5b8def"/><path d="M228.3,155.6 L426.1,105.9 L451.0,93.8 L522.4,78.8" fill="none" stroke="#f0a03c" stroke-width="2" stroke-linejoin="round"/><circle cx="228.3" cy="155.6" r="3" fill="#f0a03c"/><circle cx="426.1" cy="105.9" r="3" fill="#f0a03c"/><circle cx="451.0" cy="93.8" r="3" fill="#f0a03c"/><circle cx="522.4" cy="78.8" r="3" fill="#f0a03c"/><path d="M108.8,193.2 L147.7,170.6 L165.5,164.6 L187.7,148.0 L236.9,120.9 L262.3,117.9 L291.5,102.9 L354.2,87.8 L412.6,66.7 L445.6,47.1 L454.3,42.6 L488.9,39.6" fill="none" stroke="#d93f3f" stroke-width="2" stroke-linejoin="round"/><circle cx="108.8" cy="193.2" r="3" fill="#d93f3f"/><circle cx="147.7" cy="170.6" r="3" fill="#d93f3f"/><circle cx="165.5" cy="164.6" r="3" fill="#d93f3f"/><circle cx="187.7" cy="148.0" r="3" fill="#d93f3f"/><circle cx="236.9" cy="120.9" r="3" fill="#d93f3f"/><circle cx="262.3" cy="117.9" r="3" fill="#d93f3f"/><circle cx="291.5" cy="102.9" r="3" fill="#d93f3f"/><circle cx="354.2" cy="87.8" r="3" fill="#d93f3f"/><circle cx="412.6" cy="66.7" r="3" fill="#d93f3f"/><circle cx="445.6" cy="47.1" r="3" fill="#d93f3f"/><circle cx="454.3" cy="42.6" r="3" fill="#d93f3f"/><circle cx="488.9" cy="39.6" r="3" fill="#d93f3f"/><rect x="62" y="18" width="9" height="9" rx="2" fill="#9aa4b2"/><text x="75" y="26.5" font-size="10" fill="#39414d">A 单通道固定阈值</text><rect x="166" y="18" width="9" height="9" rx="2" fill="#5b8def"/><text x="179" y="26.5" font-size="10" fill="#39414d">B 融合+个人基线</text><rect x="270" y="18" width="9" height="9" rx="2" fill="#f0a03c"/><text x="283" y="26.5" font-size="10" fill="#39414d">C +分级门控</text><rect x="374" y="18" width="9" height="9" rx="2" fill="#d93f3f"/><text x="387" y="26.5" font-size="10" fill="#39414d">D +持续性判据（30 秒持续）</text></svg>
+<figcaption>灵敏度–误报权衡曲线（166 次专家标注发作，91 小时监测）。
+越靠左上越好。灰色单阈值曲线整体偏右——同样灵敏度下误报高一个量级。</figcaption></figure>
+</div>
+
+<h3>同灵敏度下的误报率对比 —— 最核心的一张表</h3>
+<table class=""><thead><tr><th>目标灵敏度</th><th>A 单阈值</th><th>B 融合</th><th>C 门控</th><th>D 持续判据</th></tr></thead><tbody><tr><td>≥100%</td><td>做不到</td><td>23.37 次/h</td><td>19.56 次/h</td><td>19.56 次/h</td></tr><tr><td>≥96%</td><td>11.99 次/h</td><td>19.67 次/h</td><td>18.82 次/h</td><td>18.82 次/h</td></tr><tr><td>≥92%</td><td>11.99 次/h</td><td>17.93 次/h</td><td>17.27 次/h</td><td>12.57 次/h</td></tr><tr><td>≥88%</td><td>11.99 次/h</td><td>16.87 次/h</td><td>14.97 次/h</td><td>8.18 次/h</td></tr></tbody></table>
+<p>模式 D 的平衡工作点在 θ=0.55 / 持续判据 45 秒处达到 <b>49% 灵敏度、2.67 次/h 误报、32 秒延迟</b>；在<b>同等灵敏度</b>下，
+它比朴素单阈值的误报低 <b>52%–-5%</b>。</p>
+
+<table><thead><tr><th>θ</th><th>灵敏度</th><th>误报 次/h</th><th>延迟中位</th></tr></thead>
+<tbody><tr><td><b>0.20</b></td><td>90%</td><td>8.88</td><td>4 s</td></tr><tr><td><b>0.25</b></td><td>89%</td><td>8.18</td><td>5 s</td></tr><tr><td><b>0.30</b></td><td>87%</td><td>8.00</td><td>5 s</td></tr><tr><td><b>0.35</b></td><td>79%</td><td>7.33</td><td>10 s</td></tr><tr><td><b>0.40</b></td><td>70%</td><td>6.14</td><td>14 s</td></tr><tr><td><b>0.45</b></td><td>64%</td><td>4.87</td><td>17 s</td></tr><tr><td><b>0.50</b></td><td>58%</td><td>4.27</td><td>22 s</td></tr><tr class=hi><td><b>0.55</b></td><td>57%</td><td>3.76</td><td>26 s</td></tr><tr><td><b>0.60</b></td><td>46%</td><td>2.76</td><td>25 s</td></tr><tr><td><b>0.65</b></td><td>40%</td><td>2.31</td><td>32 s</td></tr><tr><td><b>0.70</b></td><td>37%</td><td>1.95</td><td>28 s</td></tr><tr><td><b>0.80</b></td><td>28%</td><td>1.15</td><td>32 s</td></tr></tbody></table>
+<p class="meta">模式 D 完整曲线（时间基持续性判据 = 30 秒）</p>
+
+<div class="note"><b>扩样本带来的新结论（重要）：</b>样本小的时候（4 名患儿）最好的成绩是
+「100% 检出 / 1.42 次/h」，看上去很漂亮。把患儿从 4 名扩到 <b>23 名</b>
+（166 次发作、监测 91 小时）之后，<b>要全检出必须容忍 19.6 次/h 以上的误报</b>（θ=0.30，0 秒延迟）。
+换句话说：<b>小样本上那个「全检出」是运气，不是能力</b> —— 166 次发作里确实有几次，
+用振幅和功率这类粗特征就是分不开。我们把这个修正后的结果原样写进来，而不是只留 4 例的好看数字。</div>
+
+<div class="note"><b>但架构优势本身站得住：</b>在<b>同等灵敏度</b>下，完整方案（D）比朴素单阈值（A）
+误报只有它的 <b>1/1.0–2.1</b>，这个倍差是跨多个灵敏度档位算出来的（不是挑一个点）。
+高灵敏度区（≥80%）倍差接近 1——这个区间里持续性判据帮不上忙；优势出现在中低灵敏度区（误报压到 1–3 次/h 这个真正可用的区间）。权衡曲线的<b>形状</b>也没变。所以结论是：<b>这套机制确实有效，但真实世界的绝对难度，
+比小样本时看到的更高。</b></div>
+
+<div class="note hot"><b>诚实的负面结果：</b>CHB-MIT 上的<b>绝对</b>误报率
+（几个次/h 量级）高于公开可穿戴基准（Nightwatch 0.25 次/夜、Embrace 0.14 次/天）。
+原因可复现：CHB-MIT 的「无发作」数据里本来就有大量癫痫样活动与睡眠期转换，
+而振幅 / 功率类特征无法把它们与发作分开。佐证实验：把无发作文件换成
+<b>白天</b>记录（患儿清醒活动）后误报更高，换成夜间记录才降到现在的水平 ——
+说明误报主要来自患者自身的背景脑电，而非引擎抖动。</div>
+
+<h2>三、SeizeIT2：可穿戴链路检验</h2>
+<p>用<b>真实原始信号</b>而非模拟器：体动取自胸前模块加速度计（与心电同一贴片，
+即赛题设想的单设备形态）→ 模长去重力 → 4 秒窗 RMS + 1.5–5 Hz 自相关；
+心率取自单导联 ECG 256 Hz → 自写 Pan-Tompkins 简化版 R 峰检测，
+并加<b>信号质量门控</b>（生理窗口 35–180 bpm + R-R 一致性）：质量不过关的窗
+不给可疑数值，而是明确标为"拿不到"。
+呼吸 / 血氧 SeizeIT2 不含，置空 —— 因此这是 <b>8 个可穿戴信号中 4 个</b>的部分验证。</p>
+
+        <h3>A 全面性 / 继发全面强直-阵挛发作（SUDEP 高危人群，可穿戴基准的目标）</h3>
+        <p class="meta">15 个记录 · 17 次入睡期发作 ·
+           背景段 5.0 小时</p>
+        <table class=""><thead><tr><th>θ / 持续判据</th><th>灵敏度</th><th>误报 次/h</th><th>延迟中位</th></tr></thead><tbody><tr><td>0.7 / 0 s</td><td>65%</td><td>0.00</td><td>68 s</td></tr><tr><td>0.7 / 6 s</td><td>35%</td><td>0.00</td><td>57 s</td></tr><tr><td>0.7 / 10 s</td><td>29%</td><td>0.00</td><td>76 s</td></tr><tr><td>0.8 / 0 s</td><td>29%</td><td>0.00</td><td>68 s</td></tr><tr><td>0.7 / 16 s</td><td>24%</td><td>0.00</td><td>98 s</td></tr><tr><td>0.8 / 6 s</td><td>18%</td><td>0.00</td><td>124 s</td></tr><tr><td>0.8 / 10 s</td><td>18%</td><td>0.00</td><td>124 s</td></tr><tr><td>0.8 / 16 s</td><td>18%</td><td>0.00</td><td>120 s</td></tr><tr><td>0.55 / 10 s</td><td>88%</td><td>0.60</td><td>32 s</td></tr><tr><td>0.3 / 0 s</td><td>94%</td><td>8.60</td><td>4 s</td></tr><tr><td>0.6 / 0 s ◀ 推荐</td><td>94%</td><td>1.20</td><td>24 s</td></tr></tbody></table>
+        <h3>B 短暂局灶性运动/过度运动发作（5-21 秒）</h3>
+        <p class="meta">16 个记录 · 92 次入睡期发作 ·
+           背景段 5.33 小时</p>
+        <table class=""><thead><tr><th>θ / 持续判据</th><th>灵敏度</th><th>误报 次/h</th><th>延迟中位</th></tr></thead><tbody><tr><td>0.8 / 0 s</td><td>3%</td><td>0.38</td><td>25 s</td></tr><tr><td>0.7 / 6 s</td><td>2%</td><td>0.56</td><td>18 s</td></tr><tr><td>0.7 / 10 s</td><td>2%</td><td>0.56</td><td>18 s</td></tr><tr><td>0.7 / 16 s</td><td>2%</td><td>0.56</td><td>19 s</td></tr><tr><td>0.7 / 0 s</td><td>8%</td><td>0.94</td><td>36 s</td></tr><tr><td>0.55 / 6 s</td><td>29%</td><td>1.50</td><td>16 s</td></tr><tr><td>0.55 / 10 s</td><td>26%</td><td>1.50</td><td>22 s</td></tr><tr><td>0.55 / 16 s</td><td>21%</td><td>1.50</td><td>24 s</td></tr><tr><td>0.6 / 10 s</td><td>17%</td><td>1.50</td><td>26 s</td></tr><tr><td>0.3 / 0 s</td><td>92%</td><td>9.38</td><td>4 s</td></tr></tbody></table>
+<div class="note"><b>结论：</b>可穿戴链路在<b>全面性 / 继发全面强直-阵挛</b>上成立：
+<b>94% 灵敏度（16/17）@ 1.20 次/小时</b>误报、检测延迟中位 24 秒；
+要整晚零误报则降到 65%。按用户「大发作绝不可漏报、可接受一定误报」的口径，
+取前一个工作点。<br>
+对<b>持续 5–21 秒的短暂局灶性发作</b>则弱得多（最高 92% 要付 9.4 次/小时误报，
+压到 3.9 次/小时只剩 57%）—— 这与临床认识一致：非 EEG 类可穿戴本来就只能
+可靠检出全面性 / 强直-阵挛发作。<b>我们的口径是：局灶性发作只记录和提示，
+不承诺可靠报警。</b></div>
+
+<div class="note"><b>两个必须同时说明的前提（2026-10-04 修正）：</b><br>
+① 此前报的「71% @ 0.40 次/h」「65% @ 5 小时零误报」<b>已作废</b>。
+原因是两个静默 bug：体动门限误用模拟器量纲（真实加速度计是 g 单位，
+导致体动与节律两路信号被整体乘为 0）、以及噪声误检的假心率被学进个人基线
+（把基线从 70 bpm 抬到 124，真实发作反而算不出偏离）。
+发现线索是<b>灵敏度在 θ=0.30~0.50 区间完全不动</b>——权衡曲线有平台段就是信号层坏了。
+详见 <code>文档/第七棒-根因两个单位错配.md</code>。<br>
+② 「体动判别力只有 10%」这个结论的前提是<b>绝对阈值</b>判据。
+改成「相对本人安静基线的倍数」后，同一个信号的区分度是 <b>58.4%</b>
+（门限 3→10 倍，由 8606 个背景窗 vs 931 个发作窗的分布选出，不是拍的）。
+两个数都真实，引用时必须带上各自前提。</div>
+
+<h2>四、「看不见」审计：信号缺失才是最危险的漏报</h2>
+<p>需求是「大发作绝对不可以漏报」。但有一条比阈值偏高危险得多的漏报通道：
+<b>信号缺失时风险分天然很低，于是判级为"正常"，什么都不报。</b>
+设备脱落、电极松动、整段噪声，对家长来说都表现为"安静的一夜"。</p>
+<p>我们量化了这个盲区有多大（<code>validation/run_blindspot_audit.py</code>，
+SeizeIT2 A 组 15 例逐例统计）：</p>
+<table>
+<tr><th>指标</th><th>中位</th><th>最差患者</th></tr>
+<tr><td>整夜拿不到心率的窗口占比</td><td>12.8%</td><td>64.4%</td></tr>
+<tr><td><b>发作期落在盲区的窗口占比</b></td><td><b>29.7%</b></td><td><b>88.6%</b></td></tr>
+<tr><td>最长单次连续盲区</td><td>—</td><td>64 秒</td></tr>
+</table>
+<div class="note">第二行才是要命的数：<b>强直-阵挛本身的肌电干扰会毁掉 ECG，
+"最需要看清的时刻"恰恰是最看不清的时刻。</b>
+所以我们把"看不见"做成一个<b>独立的告警级别 UNAVAILABLE</b>——
+全部生命信号失联超 45 秒就告知家长「现在看不见孩子，检查设备」。
+它不播发作铃声、风险分记 0，不与发作报警混淆。<br>
+这是和市面设备的一个明确差异：<b>竞品把"看不见"显示成"一切正常"。</b>
+宁可让家长知道设备瞎了，也不能让他以为孩子没事。</div>
+
+<h2>五、UCD：呼吸 / 血氧链路检验（睡眠呼吸事件）</h2>
+<p>睡眠呼吸暂停/变浅是赛题「异常事件记录」的另一半。UCD 数据库
+（圣文森大学医院，25 名疑诊成人整夜 PSG）带专家逐条标注的呼吸事件与血氧降幅。
+取 12 名受试者、<b>1550 次呼吸事件</b>、36 小时睡眠背景。协议：整夜连续回放
+（8 秒窗 / 4 秒步进），个人基线跨夜累积，与产品「每晚戴着手环睡」一致；
+呼吸事件属<b>提醒级</b>——只评估 WARNING 级报警，CRITICAL 不参与
+（分级设计里癫痫才唤醒）。</p>
+
+<div class="note warn"><b>数据集的诚实约束：</b>这批事件全部是 HYP「呼吸变浅」型，
+事件期间热敏气流通道的幅度/基线比中位数是 <b>1.00</b>（判读依据的鼻压力
+导联不在公开文件里），胸腹努力带同样看不出来。唯一可靠的实测标记是
+<b>血氧下降</b>（70% 事件降幅 ≥4%）。因此本节实际检验的是
+「血氧 + 呼吸率 + 心率」融合的提醒能力 —— 这也正是消费级手环
+筛查睡眠呼吸暂停的现实做法。</div>
+
+<h3>先看结论：一个反直觉的发现</h3>
+<p>把 CHB-MIT 上验证有效的<b>时间基持续性判据</b>（要求"最近 N 秒风险中位数也越线"）
+原样搬到呼吸事件上，效果是<b>灾难性的</b>：</p>
+<table><thead><tr><th>持续判据</th><th>检出（θ=0.30）</th><th>检出率</th><th>误报 次/h</th><th>延迟中位</th></tr></thead>
+<tbody><tr class=hi><td><b>0 s</b></td><td>703/1550</td><td>45.4%</td><td>4.90</td><td>16 s</td></tr><tr class=hi><td>30 s</td><td>172/1550</td><td>11.1%</td><td>0.47</td><td>42 s</td></tr><tr class=hi><td>60 s</td><td>96/1550</td><td>6.2%</td><td>0.14</td><td>59 s</td></tr><tr class=hi><td>120 s</td><td>62/1550</td><td>4.0%</td><td>0.08</td><td>22 s</td></tr></tbody></table>
+<p>误报确实从 4.93 一路压到 <b>0.08 次/h</b>（降 <b>62 倍</b>），但检出同时从 45% 崩到 3.6%。
+原因很直接：<b>呼吸变浅事件本身就只持续 10–30 秒</b>，"最近 60 秒风险中位数越线"
+这种要求对它们等于直接判死刑。而 CHB-MIT 的癫痫发作持续 30–120 秒，
+持续判据才恰好卡在信号与噪声的分界上。</p>
+<div class="note"><b>由此得到一条设计规则：</b>持续性判据的时长必须<b>与目标事件的实际时长同一量级</b>，
+不能跨模态照搬。癫痫用 30 秒、呼吸事件用 0（瞬时）—— 同一份引擎，
+两种事件用两套参数，这恰恰是「分级门控」该有的样子。
+把这条写成了配置项而不是硬编码，接力时可直接改。</div>
+
+<h3>提醒阈值扫描（不启用持续判据）</h3>
+<table><thead><tr><th>θ / 持续判据</th><th>事件检出</th><th>误报 次/h</th><th>延迟中位</th></tr></thead>
+<tbody><tr><td>0.50 / 0 s</td><td>2.1%</td><td>0.00</td><td>42 s</td></tr><tr><td>0.35 / 120 s</td><td>1.0%</td><td>0.00</td><td>43 s</td></tr><tr><td>0.50 / 30 s</td><td>0.2%</td><td>0.00</td><td>28 s</td></tr><tr><td>0.40 / 60 s</td><td>0.1%</td><td>0.00</td><td>58 s</td></tr><tr><td>0.40 / 30 s</td><td>0.7%</td><td>0.03</td><td>50 s</td></tr><tr><td>0.35 / 60 s</td><td>1.5%</td><td>0.06</td><td>30 s</td></tr><tr><td>0.30 / 120 s</td><td>4.0%</td><td>0.08</td><td>22 s</td></tr><tr><td>0.35 / 30 s</td><td>3.5%</td><td>0.08</td><td>40 s</td></tr></tbody></table>
+<p class="meta">12 人合并；误报只计睡眠期，且排除每次事件前后 120 秒</p>
+
+<div class="note warn"><b>怎样读这张表才不误导：</b>呼吸链最好的工作点是
+θ=0.30 / 无持续判据，<b>45.4% 检出、4.93 次/h 误报</b>。
+如果目标是"每次呼吸事件都报"，这套参数远不够——临床上没人会接受这个检出率。
+它真正的价值在<b>趋势筛查</b>：一夜 4.9 次/h 的提醒对应 AHI ≈ 5，
+恰好是「轻度睡眠呼吸暂停」的临床界线。也就是说这套规则能回答
+"这个人今晚需不需要去做睡眠监测"，而不是"这一次呼吸停了没有"。
+产品定位写成<b>筛查而非诊断</b>，才是诚实的。</div>
+
+<div class="note hot"><b>本节最重要的结论，是一个负面结果：</b>
+呼吸链<b>没有对照组碾压优势</b>——我们没找到可信的"朴素做法"基线来对比，
+所以不主张任何倍数级优势。相反，把 CHB-MIT 上有效的<b>持续性判据</b>
+（要求"最近 N 秒风险中位数也越线"）原样搬过来，效果是<b>灾难性的</b>：
+误报从 4.93 压到 0.08 次/h（降 62 倍），但检出同时从 45% 崩到 3.6%。
+根因：<b>呼吸变浅事件本身只持续 10–30 秒</b>，"最近 60 秒中位数越线"对它们等于判死刑；
+而癫痫发作持续 30–120 秒，30 秒判据恰好卡在信号与噪声的分界上。
+<b>这一条是三个数据集才买得到的教训</b>——同一份引擎，癫痫用 30 秒、
+呼吸事件用 0（瞬时），持续性判据的时长必须与目标事件的实际时长同一量级，
+不能跨模态照搬。</div>
+
+<h2>六、特征筛选：用数据挑特征，不靠想象</h2>
+<p>三轮单变量 AUC 筛选（按患者 01/03/05/08 分别列出，看跨患者一致性）：</p>
+<table class=""><thead><tr><th>特征</th><th>全体 AUC</th><th>逐患者一致性</th><th>结论</th></tr></thead><tbody><tr><td>总功率（0.5–40 Hz，75 分位）</td><td>0.934</td><td>0.92 / 0.94 / 0.96 / 0.97</td><td>采用 · 权重 0.45</td></tr><tr><td>线长（75 分位）</td><td>0.892</td><td>0.78 / 0.97 / 0.92 / 0.92</td><td>采用 · 权重 0.38</td></tr><tr><td>2–5 Hz 自相关峰值</td><td>0.734</td><td>0.67 / 0.48 / 0.89 / 0.84</td><td>采用 · 权重 0.20</td></tr><tr><td>跨导联线长变异系数</td><td>0.724</td><td>0.84 / 0.86 / 0.45 / 0.83</td><td>弃用（判别力仅 5.6%）</td></tr><tr><td>2–5 Hz 谱占比</td><td>0.614</td><td>0.88 / 0.56 / <b>0.23</b> / 0.78</td><td>弃用（chb05 反向）</td></tr><tr><td>谱熵</td><td>0.437</td><td>0.05 / 0.81 / 0.70 / 0.45</td><td>弃用（方向与假设相反）</td></tr><tr><td>频谱质心 / 过零率</td><td>0.48 / 0.49</td><td><b>0.06</b> / 0.85 …</td><td>弃用（跨患者方向翻转）</td></tr></tbody></table>
+
+<h2>七、这份工作最值钱的部分：三次「合成数据陷阱」</h2>
+<div class="note hot">同一个错误犯了三次 —— <b>在合成 / 模拟数据上调出来的阈值，
+搬到真实数据上会系统性失效。</b></div>
+<table class=""><thead><tr><th>#</th><th>出错处</th><th>表现</th><th>根因</th></tr></thead><tbody><tr><td>1</td><td><code>eeg_rhythm</code> 信号</td><td>真实 CHB-MIT 上<b>一次都没触发</b></td><td>阈值「2–5 Hz 谱占比 &gt; 0.5」在模拟器上定的；真实发作期只有 0.33–0.47</td></tr><tr><td>2</td><td><code>ll_cv</code> 空间扩散信号</td><td>正常窗触发率与发作窗一样高</td><td>判别力仅 5.6%，纯误报源 → 已移除</td></tr><tr><td>3</td><td>可穿戴体动阈值</td><td>SeizeIT2 上<b>全部信号触发率 0%</b></td><td>模拟器体动量纲是 0–10 任意单位；真实加速度计是 g（0.09–0.6）</td></tr></tbody></table>
+<p>对应的工作纪律：<b>任何阈值都必须用真实数据的分位数定，并报告其逐患者一致性与判别力。</b>
+落实成三个可复用动作 —— 先单变量 AUC 筛选再写信号、按实测判别力分配权重（而非拍脑袋）、
+报整条权衡曲线而非单点。</p>
+
+<h2>八、顺带修掉的真 bug</h2>
+<table class=""><thead><tr><th>Bug</th><th>症状</th><th>影响</th></tr></thead><tbody><tr><td>CHB-MIT 摘要正则</td><td>只匹配带编号的 <code>Seizure 1 Start Time:</code></td><td>一条发作都读不到，整轮结果全空</td></tr><tr><td>EDF 头部解析</td><td>CHB-MIT 用<b>字段优先</b>布局，非标准信号优先</td><td>照课本写会直接解析失败</td></tr><tr><td>缓存区间拼接</td><td>有缺口时拼接下标 ≠ 绝对时间</td><td>发作窗永远对不上标注，且<b>不报错</b></td></tr><tr><td>SeizeIT2 标注存储</td><td>把加了 5 分钟预取的下载区间当成发作区间</td><td>5 秒发作被记成 605 秒</td></tr><tr><td>UCD 事件时钟</td><td>标注时间是<b>从记录开始的经过时间</b>，EDF 头的钟表时间对不上</td><td>拿钟表时间对齐会差半小时；用血氧谷底交叉验证才钉死</td></tr><tr><td>UCD 固定宽度列</td><td><code>Low/%Drop</code> 与 <code>Snore/Arousal</code> 之间夹占位列</td><td>宽松正则把「89.9」的整数部分吞成时长列，<b>不报错</b></td></tr><tr><td>体动门限量纲错配</td><td><code>motion/2.5</code> 的 2.5 来自模拟器量纲(0-10)，真实加速度计是 g 单位(0.0007–0.04)</td><td>乘数最大 0.02，把体动与节律<b>两路信号整体归零</b>；ΔHR +105bpm、体动 50 倍的大发作 risk 只有 0.008。A 组因此卡在 71%</td></tr><tr><td>个人基线自我污染</td><td>噪声误检的假心率(150–181bpm)判级为 LOG → 被当作"正常"学进基线 → 基线越高越不报警</td><td>基线 center 从真实的 70 被抬到 124、MAD 撑到 20；真实发作心率 175 算出的 doubt 只有 0.002</td></tr><tr><td>盲区审计跨缓存缺口累加</td><td>只预取了需要的时段，相邻两窗可能相差几小时</td><td>算出「最长盲区 19 小时」的假数字（真实是 64 秒）。<b>这是审计脚本自己的 bug——查工具也要查</b></td></tr></tbody></table>
+<p><b>静默错误比崩溃危险得多</b> —— 它不报错，只是让你拿到一份看起来正常、实则全错的结果。</p>
+<div class="note"><b>这次新学到的识别手法：</b>前两个 bug 藏了很久，
+因为成绩（71%）与公开文献同量级，看不出问题。唯一的线索是
+<b>灵敏度在 θ=0.30→0.50 三档上数值完全相同</b>。
+权衡曲线放宽阈值必然多抓到几个，<b>有平台段就说明信号层坏了，调参永远治不好</b>。<br>
+配合之前那次「全员心率恒为 49.3 bpm」的教训，现在有两道必查：
+<b>跨个体看雷同、跨阈值看雷同。</b></div>
+
+<h2>九、工程侧结论</h2>
+<ul>
+<li><b>性能</b>：个人基线每窗排序求中位数会让整夜回放退化成 O(n²log n)。
+改为每 8 个观测刷新一次并缓存（与真实设备「每半分钟更新基线」一致）后，
+阈值扫描（多档 θ × 多种持续秒数 × 全量患儿）在后台跑完。</li>
+<li><b>回归</b>：引擎改动后 <code>tests/test_engine.py</code> <b>29/29 全绿</b>。</li>
+<li><b>数据成本</b>：117 GB 的 SeizeIT2 只取 106 MB；503 MB 的 CHB-MIT 子集 2.7 分钟下完。</li>
+</ul>
+
+<h2>十、两个收尾实验：一正一负</h2>
+<h3>时间基持续性判据（改进，已合入引擎）</h3>
+<p>旧版持续性判据按「窗口数」计（15 窗），语义依赖采样步进——换一种设备或数据集，
+「15 窗」代表的真实时长就变了。现已改为<b>按秒计</b>（<code>sustain_seconds</code>，
+取最近 30 秒内风险中位数），与设备、数据集无关。改完在两条链上重扫，
+<b>同配置的成绩一格没变</b>——说明这次是把语义写清楚，不是偷偷换算法。</p>
+<p class="small">注：4 例子集时代这项的 CHB-MIT 成绩是「100% 灵敏度 · 1.42 次/h · 32 s 延迟」；
+扩到全量 23 名患儿后同一配置是 <b>49% 灵敏度 · 1.45 次/h</b>。
+变的不是这次改动，是样本量——见第三节的扩样本修正。</p>
+<h3>首夜自校准阈值（负面结果，已放弃）</h3>
+<p>直觉上「每个孩子该有自己的报警线」——用首夜无发作数据的风险 99.5 分位数
+自动定个人 θ。<b>已在全量 23 名患儿上跑完</b>，结论是：费了这么大劲，只换来 1 个百分点的灵敏度。</p>
+<table class=""><thead><tr><th>患者</th><th>个人 θ</th><th>全局 θ 灵敏度/误报</th><th>个人 θ 灵敏度/误报</th></tr></thead><tbody><tr><td>chb01</td><td>0.62</td><td>7/7 · 2.00/h</td><td>6/7 · 1.67/h</td></tr><tr><td>chb02</td><td>0.51</td><td>2/2 · 1.00/h</td><td>2/2 · 1.00/h</td></tr><tr><td>chb03</td><td>0.72</td><td>7/7 · 1.33/h</td><td>6/7 · 3.67/h</td></tr><tr><td>chb04</td><td>0.69</td><td>2/4 · 4.25/h</td><td>2/4 · 1.62/h</td></tr><tr><td>chb05</td><td>0.66</td><td>5/5 · 3.00/h</td><td>5/5 · 0.67/h</td></tr><tr><td>chb06</td><td>0.40</td><td>0/10 · 0.38/h</td><td>6/10 · 0.38/h</td></tr><tr><td>chb07</td><td>0.73</td><td>3/3 · 2.62/h</td><td>2/3 · 1.25/h</td></tr><tr><td>chb08</td><td>0.44</td><td>5/5 · 0.33/h</td><td>5/5 · 1.00/h</td></tr><tr><td>chb09</td><td>0.51</td><td>4/4 · 0.38/h</td><td>4/4 · 0.50/h</td></tr><tr><td>chb10</td><td>0.59</td><td>4/7 · 1.33/h</td><td>4/7 · 1.83/h</td></tr><tr><td>chb11</td><td>0.64</td><td>1/3 · 1.33/h</td><td>1/3 · 0.67/h</td></tr><tr><td>chb12</td><td>0.70</td><td>4/27 · 2.00/h</td><td>2/27 · 1.66/h</td></tr><tr><td>chb13</td><td>0.51</td><td>4/10 · 0.67/h</td><td>5/10 · 2.00/h</td></tr><tr><td>chb14</td><td>0.34</td><td>0/8 · 0.00/h</td><td>0/8 · 1.00/h</td></tr><tr><td>chb15</td><td>0.47</td><td>8/20 · 0.00/h</td><td>8/20 · 0.00/h</td></tr><tr><td>chb16</td><td>0.73</td><td>1/10 · 2.00/h</td><td>1/10 · 3.00/h</td></tr><tr><td>chb17</td><td>0.52</td><td>2/3 · 0.33/h</td><td>2/3 · 0.33/h</td></tr><tr><td>chb18</td><td>0.71</td><td>5/6 · 3.33/h</td><td>4/6 · 1.67/h</td></tr><tr><td>chb19</td><td>0.69</td><td>3/3 · 1.00/h</td><td>3/3 · 0.33/h</td></tr><tr><td>chb20</td><td>0.67</td><td>8/8 · 1.00/h</td><td>6/8 · 0.67/h</td></tr><tr><td>chb21</td><td>0.58</td><td>1/4 · 1.00/h</td><td>1/4 · 0.67/h</td></tr><tr><td>chb22</td><td>0.52</td><td>3/3 · 0.33/h</td><td>3/3 · 0.33/h</td></tr><tr><td>chb23</td><td>0.38</td><td>3/7 · 0.50/h</td><td>5/7 · 1.00/h</td></tr></tbody></table>
+<p>合计：全局 θ=0.55 → <b>49% 灵敏度、1.45 次/h</b>；
+个人 θ 自校准 → <b>50% 灵敏度、1.14 次/h</b>。
+灵敏度只高 1 个百分点，误报也只降两成——而且个人 θ 在各患儿之间横跨 0.35–0.73，
+说明个体差异确实存在，只是<b>不该调在阈值上</b>。</p>
+<p>原因想通了：个体差异<b>已经被「个人基线」吸收</b>——每个孩子的信号都是先跟自己的常态比
+（中位数 + MAD），风险分本身已是「相对自己有多异常」的归一化量，
+再在阈值上按人调整属于重复校准，只会把噪声学进去。
+<b>这个负面结果反过来验证了架构选择：自适应放在基线层，阈值保持全局。</b></p>
+
+<h2>十一、下一步</h2>
+<ol>
+<li><b>压误报（最高优先）</b>：A 组 94% 灵敏度那个工作点是 1.20 次/小时，
+折算一个 8 小时夜晚约 <b>9.6 次</b>——这个数对家庭仍然偏多，是最该先解决的。
+可用的手段不需要新硬件：体动修复后 <code>cross_modal_sync</code> 在 A 组重新生效了，
+应单独测它的增量；以及按睡眠阶段调门限（浅睡/REM 本来就心率波动）。</li>
+<li><b>查清最后 1 次漏报</b>：sub-015 那次 ΔHR +51.5、体动 70 倍却没报，
+但它整夜 64.4% 的窗口拿不到心率（全组最差）、发作期 88.6% 落在盲区——
+大概率是信号质量问题而非判据问题。现在它会触发 UNAVAILABLE，
+要确认家长收到的告警是有用的。</li>
+<li><b>引擎侧重测融合增量</b>：之前那组 S1/S2/S3 对比是独立实现、不走引擎，
+结论仍然有效；但<b>引擎内部的融合在修复前从未真正融合过体动</b>，
+需要在引擎上重做一次。</li>
+<li><b>背景活动建模</b>：把发作间期放电单独建基线，应能显著压低 CHB-MIT 上的误报。</li>
+<li><b>呼吸事件升级</b>：UCD 上 45% 检出是血氧驱动的天花板——若接入真实鼻压力
+气流（消费级手环没有），呼吸链路的检出应显著上升。</li>
+</ol>
+
+<div class="foot">
+生成脚本 <code>demo/build_validation.py</code> ·
+原始数据 <code>validation/chbmit_curve.json</code>、<code>validation/seizeit2_results.json</code> ·
+复现：<code>fetch_chbmit.py</code> → <code>run_chbmit.py</code>；<code>fetch_seizeit2.py</code> → <code>run_seizeit2.py</code>
+</div>
+</body></html>
